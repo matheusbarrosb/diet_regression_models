@@ -8,7 +8,6 @@ lapply(pack_list, library, character.only = TRUE)
 
 # Source functions -------------------------------------------------------------
 fun_dir = here::here("R")
-# source multiple functions in the R/ folder
 fun_files = list.files(fun_dir, pattern = "\\.R$", full.names = TRUE)
 lapply(fun_files, source)
 
@@ -17,10 +16,9 @@ data_dir = here::here("data")
 raw_data = read.csv(file.path(data_dir, "rawData.csv"))
 
 # Data wrangling ---------------------------------------------------------------
-# Species and site definitions as before
 spps  = sort(c("LAGRHO", "MICUND", "BAICHR"))
 sites = sort(c("AM", "DR", "HWP", "LB", "NEPaP", "SA", "CI"))
-RS_levels = sort(c("CT", "LS")) # or use unique(wg_data$Treatment)
+RS_levels = sort(c("CT", "LS"))
 
 wg_data = raw_data %>%
   filter(Species.code %in% spps) %>%
