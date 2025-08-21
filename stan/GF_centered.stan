@@ -77,7 +77,7 @@ model {
       + status_eff
       + inter_eff
       + beta_TL[species[n]] * TL[n]
-      + beta_FW[species[n]] * FW[n],
+      + beta_FW[species[n]] * log(FW[n]),
       sigma[species[n]]
     );
   }

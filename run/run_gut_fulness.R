@@ -1,6 +1,6 @@
 # Packages ---------------------------------------------------------------------
 pack_list = c("dplyr", "rstan", "tidyr", "ggplot2", "purrr", "readr",
-              "stringr", "here", "reshape2", "PNWColors", "ggpubr")
+              "stringr", "here", "reshape2", "PNWColors", "ggpubr", "scales")
 if (!all(pack_list %in% rownames(installed.packages()))) {
   install.packages(pack_list[!pack_list %in% rownames(installed.packages())])
 }
@@ -65,30 +65,57 @@ model_dir = here::here("stan/")
 stanc(paste0(model_dir, "GF_centered.stan"))
 rstan_options(auto_write = TRUE)
 
-fit <- stan(
-  file   = paste0(model_dir, "GF_centered.stan"),  
-  data   = stan_data,
-  chains = 2,        
-  iter   = 5000,      
-  warmup = 1000,       
-  cores  = 2,        
-  seed   = 444       
-)
+# load fit object if it exists
+if (file.exists(here::here("res", "fit_gut_fullness.rds"))) {
+  fit = readRDS(here::here("res", "fit_gut_fullness.rds"))
+} else {
+  fit = NULL
+}
+
+# if fit is NULL, run the model
+if (is.null(fit)) {
+  message("Running the model...")
+  set.seed(413)
+  fit = stan(
+    file   = paste0(model_dir, "GF_centered.stan"),  
+    data   = stan_data,
+    chains = 3,        
+    iter   = 10000,      
+    warmup = 2000,       
+    cores  = 3,        
+    seed   = 427,
+    control = list(adapt_delta = 0.95,
+                   max_treedepth = 20)
+  )
+}
+
+# save fit if NULL
+if (file.exists(here::here("res", "fit_gut_fullness.rds"))) {
+  message("Fit already exists, skipping save.")
+} else {
+  message("Saving fit object...")
+  saveRDS(fit, file = here::here("res", "fit_gut_fullness.rds"))
+}
+
 
 # plotting ---------------------------------------------------------------------
+fit = readRDS(here::here("res", "fit_gut_fullness.rds"))
 
 ### PROBABILITIES OF LS > CT ###
-species_names <- c("Pinfish", "Croaker", "Silver perch")
-status_names <- c("CT", "LS") # CT is reference (status==1), LS is non-reference
+species_names = c("Pinfish", "Croaker", "Silver perch")
+status_names  = c("CT", "LS") # CT is reference (status==1)
+
+post = rstan::extract(fit,
+                      pars = c("beta_RS", "beta_TL", "beta_FW"))
 
 post_diffs_plot =
 plot_post_diffs(
-  beta_RS_array = post$beta_RS,
-  species_names = species_names,
-  status_names = status_names,
-  title = "A",
-  prob_text_size = 3,
-  strip_text_size = 10
+  beta_RS_array   = post$beta_RS,
+  species_names   = species_names,
+  status_names    = status_names,
+  prob_text_size  = 3,
+  strip_text_size = 10,
+  title           = "A"
 ) +
   xlim(-1,2)
 
@@ -104,35 +131,30 @@ plot_betas(
   spps = c("Pinfish", "Croaker", "Silver perch"),
   site_labels = c("AM", "DR", "HWP", "LB", "NEPaP", "SA", "CI"),
   status_labels = c("CT", "LS"),
-  param_panels = c("beta_site", "beta_RS", "beta_TL", "beta_FW", "beta_site_RS"),
-  title = "C",
+  param_panels = c("beta_RS", "beta_TL", "beta_FW"),
   palette = "Bay",
-  ncol = 2
+  title = "B",
+  ncol = 3
 )
 
 # arrange 
 plot1 =
 ggarrange(
   post_diffs_plot,
-  ppcheck_plot,
+  coef_plot,
   nrow = 2,
   label.y = "Density"
+  #align = "v"
 ); print(plot1)
 
-plot2 = 
-ggarrange(
-  plot1,
-  coef_plot,
-  ncol = 2
-  )
 
 fig_dir = here::here("res", "figures")
 
 ggsave(
   filename = file.path(fig_dir, "gut_fullness.pdf"),
-  plot = plot2,
-  width = 10,
-  height = 6,
+  plot = plot1,
+  width = 5,
+  height = 4,
   units = "in",
   device = cairo_pdf
 )

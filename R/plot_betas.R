@@ -13,7 +13,6 @@ plot_betas <- function(
   n_species <- length(spps)
   species_colors <- pnw_palette(palette, n = n_species)
   
-  # Site presence rules (site names!)
   present_sites <- list(
     "Pinfish" = site_labels,
     "Croaker" = c("CI", "NEPaP", "SA"),
@@ -126,11 +125,10 @@ plot_betas <- function(
   )
   beta_summary$parameter <- factor(beta_summary$parameter, levels = names(pretty_labels), labels = pretty_labels)
   
-  p <- ggplot(beta_summary, aes(x = mean, y = index, color = species)) +
+  p <- ggplot(beta_summary, aes(x = mean, y = species)) +
     geom_point(size = 3, position = position_dodge(width = 0.5)) +
     geom_errorbarh(aes(xmin = q025, xmax = q975), height = 0, position = position_dodge(width = 0.5)) +
-    facet_wrap(~ parameter, scales = "free", ncol = ncol, labeller = label_parsed) +
-    scale_color_manual(values = species_colors, name = "Species") +
+    facet_grid(. ~ parameter, scales = "free_x", labeller = label_parsed) +
     labs(
       y = NULL,
       x = "Posterior Mean (95% Interval)",
@@ -140,8 +138,13 @@ plot_betas <- function(
     theme(
       legend.title = element_blank(),
       legend.position = "top",
-      strip.text = element_text(face = "bold", size = 14),
-      axis.title.y = element_text(angle = 0, vjust = 0.5)
-    )
+      strip.text = element_text(face = "bold", size = 12),
+      axis.title.y = element_text(angle = 0, vjust = 0.5),
+      axis.text.y = element_text(size = 10), # Show y labels
+      panel.spacing = unit(0.5, "lines"),
+      strip.placement = "outside"
+    ) +
+  scale_x_continuous(labels = label_number(accuracy = 0.01))
+  
   return(p)
 }

@@ -5,19 +5,15 @@ plot_post_diffs <- function(
     palette = "Bay",
     title = NULL,
     strip_text_size = 13,
-    prob_text_size = 10
+    prob_text_size = 10,
+    ncol = NULL
 ) {
-  # For centered parameterization: beta_RS_array is [iterations, species, 1]
-  # status_names should have length 2: reference (usually CT), and non-reference (usually LS)
   stopifnot(length(species_names) == dim(beta_RS_array)[2])
   stopifnot(length(status_names) == 2)
   stopifnot(dim(beta_RS_array)[3] == 1)
   
   library(ggplot2)
   library(dplyr)
-  # The only available posterior samples are for the non-reference status (usually LS)
-  # Reference status (usually CT) is always 0
-  # So LS - CT = beta_RS_array[, s, 1] - 0 = beta_RS_array[, s, 1] for each species
   
   diff_df <- data.frame()
   annot_df <- data.frame()

@@ -16,13 +16,13 @@ data_dir = here::here("data")
 raw_data = read.csv(file.path(data_dir, "rawData.csv"))
 
 # Data wrangling ---------------------------------------------------------------
-spps  = sort(c("LAGRHO"))
-sites = sort(c("AM", "DR", "HWP", "LB", "NEPaP", "SA"))
-prey  = sort(c("Amphipod", "Crustacean", "Fish", "Isopod", "Polychaete", "SAV", "Tanaidacea"))
+spps  = sort(c("BAICHR"))
+sites = sort(c("CI", "NEPaP", "SA"))
+prey  = sort(c("Amphipod", "Crustacean", "Fish", "Isopod", "Polychaete", "Tanaidacea"))
 RS_levels = sort(c("CT", "LS"))
 
 wg_data =
-raw_data %>%
+  raw_data %>%
   filter(Species.code %in% spps) %>%
   filter(Site %in% sites) %>%
   filter(Treatment %in% RS_levels) %>%
@@ -32,8 +32,8 @@ raw_data %>%
 
 # Gather data for stan ---------------------------------------------------------
 prey_mat = 
-wg_data %>%
-  select(Species.code, Site, Treatment, Amphipod, Crustacean, Fish, Isopod, Polychaete, SAV, Tanaidacea) %>%
+  wg_data %>%
+  select(Species.code, Site, Treatment, Amphipod, Crustacean, Fish, Isopod, Polychaete, Tanaidacea) %>%
   mutate(Species.code = as.numeric(factor(Species.code, levels = spps))) %>%
   mutate(Site = as.numeric(factor(Site, levels = sites))) %>%
   mutate(Treatment = as.numeric(factor(Treatment, levels = RS_levels))) %>%
@@ -63,7 +63,7 @@ model_dir = here::here("stan/")
 stanc(paste0(model_dir, "logit_int.stan"))
 rstan_options(auto_write = TRUE)
 
-fit_pinfish = stan(
+fit_silverperch = stan(
   file   = paste0(model_dir, "logit_int.stan"),  
   data   = stan_data,
   chains = 3,        
@@ -73,18 +73,16 @@ fit_pinfish = stan(
   seed   = 444       
 )
 
-# Plotting ---------------------------------------------------------------------
-
 ### 1. Probabilities of occurrence ###
-post = rstan::extract(fit_pinfish, pars = "p_status")$p_status
+post = rstan::extract(fit_silverperch, pars = "p_status")$p_status
 
 df =
-ggmcmc::ggs(fit_pinfish, family = "p_status")
+  ggmcmc::ggs(fit_silverperch, family = "p_status")
 
 prey_names = prey
-status_names <- c("LS", "CT")
+status_names = c("CT", "LS")
 
-df_parsed <- df %>%
+df_parsed = df %>%
   mutate(
     indices = str_extract(Parameter, "\\[(.*?)\\]"),
     indices = str_remove_all(indices, "\\[|\\]"),
@@ -97,8 +95,8 @@ df_parsed <- df %>%
 
 head(df_parsed)
 
-pinfish_probs = 
-df_parsed %>%
+baichr_probs = 
+  df_parsed %>%
   group_by(Prey, Status) %>%
   summarise(
     mean = mean(value),
@@ -113,7 +111,7 @@ df_parsed %>%
                 position = position_dodge(width = 0.5)) +
   custom_theme() +
   coord_flip() +
-  ylab("") +
+  ylab("Probability of encounter") +
   xlab("") +
   theme(legend.title = element_blank(),
         legend.position = "none",
@@ -123,11 +121,10 @@ df_parsed %>%
   scale_color_manual(values = pnw_palette("Bay", 2)) 
 
 ## 2. beta_tl plot ##
-
-post = rstan::extract(fit_pinfish, pars = "beta_TL")$beta_TL
-
+## beta_TL is indexed by prey only
+post = rstan::extract(fit_silverperch, pars = "beta_TL")$beta_TL
 df =
-ggmcmc::ggs(fit_pinfish, family = "beta_TL") %>%
+  ggmcmc::ggs(fit_silverperch, family = "beta_TL") %>%
   mutate(
     # Extract indices from Parameter: beta_TL[prey]
     indices = str_extract(Parameter, "\\[(.*?)\\]"),
@@ -144,8 +141,8 @@ ggmcmc::ggs(fit_pinfish, family = "beta_TL") %>%
     upper = quantile(value, 0.975)
   )
 
-pinfish_beta_TL =
-df %>%
+baichr_beta_TL =
+  df %>%
   ggplot(aes(x = Prey, y = mean)) +
   geom_point() +
   geom_errorbar(aes(ymin = lower, ymax = upper), width = 0) +
@@ -153,20 +150,33 @@ df %>%
   geom_hline(yintercept = 0, linetype = "dashed", color = "grey60") +
   coord_flip() +
   xlab("") +
-  ylab("")
+  ylab(expression(beta[TL]))
 
-## arrange plots ##
-pinfish_logit_plot =
+baichr_logit_plot = 
 ggarrange(
-  pinfish_beta_TL,
-  pinfish_probs,
-  common.legend = TRUE,
-  align = "h",
-  nrow = 1,
+  baichr_beta_TL,
+  baichr_probs,
+  ncol = 2,
   widths = c(1, 0.8)
-);print(pinfish_logit_plot)
+)
 
-## 3. Posterior predictive check ##
+#### Arrange for final plot ####
+final_plot = 
+  ggarrange(
+    pinfish_logit_plot,
+    micund_logit_plot,
+    baichr_logit_plot,
+    nrow = 3, common.legend = TRUE,
+    labels = c("A", "B", "C")
+  )
+
+ggsave(
+  filename = here::here("res", "figures", "logit_res.pdf"),
+  plot = final_plot,
+  width = 5, height = 6, dpi = 300
+)
+
+# Posterior predictive check ---------------------------------------------------
 obs_df <- as.data.frame(prey_mat)
 obs_df$site <- site
 
@@ -177,7 +187,7 @@ obs_freq <- obs_df %>%
   mutate(Site = sites[site]) %>%
   select(Site, Prey, Observed)
 
-post_pred <- rstan::extract(fit_pinfish, pars = "p_site")$p_site 
+post_pred <- rstan::extract(fit_micund, pars = "p_site")$p_site 
 
 post_pred_df = reshape2::melt(post_pred)
 colnames(post_pred_df) <- c("Iteration", "Prey_idx", "Site_idx", "Modelled")
@@ -193,19 +203,37 @@ ppc_summary <- post_pred_df %>%
     .groups = "drop"
   )
 
-pinfish_ppcheck =
-obs_freq %>%
+silverperch_ppcheck =
+  obs_freq %>%
   left_join(ppc_summary, by = c("Prey", "Site")) %>%
-
-ggplot(aes(x = Observed, y = Model_Mean, color = Prey)) +
+  
+  ggplot(aes(x = Observed, y = Model_Mean, color = Prey)) +
   geom_point(size = 1) +
   geom_errorbar(aes(ymin = Model_Lower, ymax = Model_Upper), width = 0.0) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey60") +
   labs(
     x = "",
-    y = "Predicted"
+    y = ""
   ) +
   theme(legend.title = element_blank()) +
   custom_theme() +
-  xlim(0,1) + ylim(0,1);print(pinfish_ppcheck)
+  xlim(0,1) + ylim(0,1); print(silverperch_ppcheck)
+
+#### Arrange ppcheck plots #####
+
+ggarrange(
+  pinfish_ppcheck,
+  croaker_ppcheck,
+  silverperch_ppcheck,
+  nrow = 1, common.legend = TRUE
+)
+
+ggsave(
+  filename = here::here("res", "figures", "ppcheck.pdf"),
+  plot = last_plot(),
+  width = 8, height = 3, dpi = 300
+)
+
+
+
 
