@@ -1,0 +1,7 @@
+"Prey","LowerCT","UpperCT","MeanCT","Overlap","LowerLS","UpperLS","MeanLS","Overlap_%"
+"Amphipod",0.15,0.37,0.27,0.17,0.4,0.29,TRUE,0.83
+"Crustacean",0.47,0.75,0.61,0.4,0.69,0.55,TRUE,0.63
+"Fish",0.05,0.16,0.11,0.08,0.23,0.16,TRUE,0.46
+"Isopod",0.01,0.05,0.04,0.02,0.09,0.06,TRUE,0.34
+"Polychaete",0.02,0.09,0.06,0.09,0.26,0.18,FALSE,0
+"Tanaidacea",0,0.01,0.01,0,0.02,0.01,TRUE,0.6

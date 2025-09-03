@@ -135,8 +135,8 @@ df =
   group_by(Prey) %>%
   summarise(
     mean = mean(value),
-    lower = quantile(value, 0.025),
-    upper = quantile(value, 0.975)
+    lower = quantile(value, 0.2),
+    upper = quantile(value, 0.8)
   )
 
 micund_beta_TL =

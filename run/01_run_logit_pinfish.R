@@ -102,8 +102,8 @@ df_parsed %>%
   group_by(Prey, Status) %>%
   summarise(
     mean = mean(value),
-    lower = quantile(value, 0.2),
-    upper = quantile(value, 0.8)
+    lower = quantile(value, 0.3),
+    upper = quantile(value, 0.7)
   ) %>%
   
   ggplot(aes(x = Prey, y = mean, color = Status)) +
@@ -140,8 +140,8 @@ ggmcmc::ggs(fit_pinfish, family = "beta_TL") %>%
   group_by(Prey) %>%
   summarise(
     mean = mean(value),
-    lower = quantile(value, 0.025),
-    upper = quantile(value, 0.975)
+    lower = quantile(value, 0.2),
+    upper = quantile(value, 0.8)
   )
 
 pinfish_beta_TL =
